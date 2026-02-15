@@ -1,12 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
-	"os"
 )
 
 type RSS struct {
@@ -18,10 +19,10 @@ type Channel struct {
 }
 
 type Item struct {
-	Title       string `xml:"title"`
-	Link        string `xml:"link"`
-	PubDate     string `xml:"pubDate"`
-	Description string `xml:"description"`
+	Title       string `xml:"title" json:"title"`
+	Link        string `xml:"link" json:"link"`
+	PubDate     string `xml:"pubDate" json:"pub_date"`
+	Description string `xml:"description" json:"description"`
 }
 
 func generateGoogleQuery(query, source string) string {
@@ -39,15 +40,15 @@ func getSearchResult(query string) ([]Item, error) {
 	results := []Item{}
 
 	for _, source := range sources {
-
 		resp, err := http.Get(generateGoogleQuery(query, source))
 		if err != nil {
 			fmt.Printf("Error fetching news: %v\n", err)
-			return results, errors.New("Error fetching news")
+			continue
 		}
-		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
 		if err != nil {
 			fmt.Printf("Error reading body: %v\n", err)
 			return results, errors.New("Error reading body")
@@ -61,25 +62,40 @@ func getSearchResult(query string) ([]Item, error) {
 
 		if len(rss.Channel.Items) > 0 {
 			results = append(results, rss.Channel.Items[0])
-		} else {
-			return results, errors.New("No items found.")
 		}
 	}
 
 	return results, nil
 }
 
-func main() {
+func handleGetSearchResult(w http.ResponseWriter, r *http.Request) {
+	query := r.PathValue("query")
 
-	if len(os.Args) < 3 {
-		fmt.Printf("usage: go run main.go <query>")
+	if query == "" {
+		http.Error(w, "Missing query", http.StatusBadRequest)
+		return
 	}
 
-	res, err := getSearchResult(os.Args[1])
+	res, err := getSearchResult(query)
 	if err != nil {
-		fmt.Printf("Error: %e", err)
+		fmt.Printf("Error: %v\n", err)
 	}
 
-	fmt.Printf("Returned data: %v", res)
+	w.Header().Set("Content-Type", "application/json")
 
+	err = json.NewEncoder(w).Encode(res)
+	if err != nil {
+		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Printf("Returned data: %v\n", res)
+}
+
+func main() {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /{query}", handleGetSearchResult)
+	fmt.Println("Server listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
