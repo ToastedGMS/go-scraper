@@ -1,101 +1,47 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
-	"encoding/xml"
-	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 )
 
-type RSS struct {
-	Channel Channel `xml:"channel"`
-}
-
-type Channel struct {
-	Items []Item `xml:"item"`
-}
-
-type Item struct {
-	Title       string `xml:"title" json:"title"`
-	Link        string `xml:"link" json:"link"`
-	PubDate     string `xml:"pubDate" json:"pub_date"`
-	Description string `xml:"description" json:"description"`
-}
-
-func generateGoogleQuery(query, source string) string {
-	return fmt.Sprintf("https://news.google.com/rss/search?q=%s+site:%s", query, source)
-}
-
-func getSearchResult(query string) ([]Item, error) {
-	sources := [4]string{
-		"bbc.co.uk",
-		"g1.globo.com",
-		"aljazeera.com",
-		"reuters.com",
-	}
-
-	results := []Item{}
-
-	for _, source := range sources {
-		resp, err := http.Get(generateGoogleQuery(query, source))
-		if err != nil {
-			fmt.Printf("Error fetching news: %v\n", err)
-			continue
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		if err != nil {
-			fmt.Printf("Error reading body: %v\n", err)
-			return results, errors.New("Error reading body")
-		}
-
-		var rss RSS
-		if err := xml.Unmarshal(body, &rss); err != nil {
-			fmt.Printf("Error parsing XML: %v\n", err)
-			return results, errors.New("Error parsing XML")
-		}
-
-		if len(rss.Channel.Items) > 0 {
-			results = append(results, rss.Channel.Items[0])
-		}
-	}
-
-	return results, nil
-}
-
-func handleGetSearchResult(w http.ResponseWriter, r *http.Request) {
-	query := r.PathValue("query")
-
-	if query == "" {
-		http.Error(w, "Missing query", http.StatusBadRequest)
-		return
-	}
-
-	res, err := getSearchResult(query)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	err = json.NewEncoder(w).Encode(res)
-	if err != nil {
-		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Printf("Returned data: %v\n", res)
-}
-
 func main() {
-	mux := http.NewServeMux()
+	payload := []map[string]interface{}{
+		{
+			"search_profile": "sp_g1_globo_com",
+			"query":          "g1.info_query_recency",
+			"params": map[string]interface{}{
+				"q":    "kanye",
+				"from": 0,
+				"size": 1,
+			},
+		}}
 
-	mux.HandleFunc("GET /{query}", handleGetSearchResult)
-	fmt.Println("Server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	postBody, _ := json.Marshal(payload)
+
+	responseBody := bytes.NewBuffer(postBody)
+
+	resp, err := http.NewRequest(http.MethodPost, "https://busca.globo.com/v1/search", responseBody)
+	resp.Header.Add("Content-Type", "application/json")
+	resp.Header.Add("x-tenant-id", "g1")
+	resp.Header.Add("Origin", "https://g1.globo.com")
+
+	response, err := http.DefaultClient.Do(resp)
+
+	if err != nil {
+		log.Fatalf("An Error Occured %v", err)
+	}
+
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	sb := string(body)
+	log.Printf(sb)
+
 }
