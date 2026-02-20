@@ -28,6 +28,7 @@ func main() {
 	resp.Header.Add("Content-Type", "application/json")
 	resp.Header.Add("x-tenant-id", "g1")
 	resp.Header.Add("Origin", "https://g1.globo.com")
+	resp.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
 	response, err := http.DefaultClient.Do(resp)
 
