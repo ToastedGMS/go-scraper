@@ -17,11 +17,14 @@ func cnn(query string) {
 	fullUrl := baseUrl + "?" + params.Encode()
 
 	req, err := http.NewRequest(http.MethodGet, fullUrl, nil)
+	if err != nil {
+		log.Fatalf("An error ocurred %v", err)
+	}
+
 	req.Header.Add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
 	req.Header.Add("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
-
 	if err != nil {
 		log.Fatalf("An error ocurred %v", err)
 	}
@@ -30,10 +33,10 @@ func cnn(query string) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("An error ocurred %v", err)
 	}
 
 	sb := string(body)
-	log.Printf(sb)
+	log.Println(sb)
 
 }

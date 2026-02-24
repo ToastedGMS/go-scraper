@@ -20,11 +20,17 @@ func g1(query string) {
 			},
 		}}
 
-	postBody, _ := json.Marshal(payload)
+	postBody, err := json.Marshal(payload)
+	if err != nil {
+		log.Fatalf("Error formatting request payload for G1: %v", err)
+	}
 
 	responseBody := bytes.NewBuffer(postBody)
 
 	req, err := http.NewRequest(http.MethodPost, "https://busca.globo.com/v1/search", responseBody)
+	if err != nil {
+		log.Fatalf("Error creating request to G1: %v", err)
+	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("x-tenant-id", "g1")
 	req.Header.Add("Origin", "https://g1.globo.com")
@@ -40,9 +46,9 @@ func g1(query string) {
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Error reading response body from G1: %v", err)
 	}
 	sb := string(body)
-	log.Printf(sb)
+	log.Println(sb)
 
 }
