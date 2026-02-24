@@ -8,13 +8,13 @@ import (
 	"net/http"
 )
 
-func g1() {
+func g1(query string) {
 	payload := []map[string]interface{}{
 		{
 			"search_profile": "sp_g1_globo_com",
 			"query":          "g1.info_query_recency",
 			"params": map[string]interface{}{
-				"q":    "kanye",
+				"q":    query,
 				"from": 0,
 				"size": 1,
 			},
