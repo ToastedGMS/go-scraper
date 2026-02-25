@@ -6,9 +6,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/ToastedGMS/go-scraper/types"
 )
 
-func G1(query string) {
+func G1(query string) types.Article {
 	type ParsedG1Response []struct {
 		Result struct {
 			Hits struct {
@@ -71,6 +73,21 @@ func G1(query string) {
 		log.Fatalf("Error parsing response body from G1: %v", err)
 	}
 
-	log.Printf("%+v", parsed[0].Result.Hits.Hits[0].Source)
+	var final types.Article
+
+	if len(parsed) == 0 || len(parsed[0].Result.Hits.Hits) == 0 {
+		log.Printf("G1: No results found for query '%s'", query)
+		return final //
+	}
+
+	hit := parsed[0].Result.Hits.Hits[0].Source
+
+	final.Title = hit.Title
+	final.Date = hit.Issued
+	final.Img = hit.Thumbnail
+	final.Source = hit.Publisher
+	final.URL = hit.URL
+
+	return final
 
 }

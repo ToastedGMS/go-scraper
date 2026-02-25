@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+
+	"github.com/ToastedGMS/go-scraper/types"
 )
 
 func getFirstImage(htmlContent string) string {
-	re := regexp.MustCompile(`src="([^"]+)"`)
+	re := regexp.MustCompile(`src="([^"]+\.(?:jpg|jpeg|png|webp|gif))[^"]*"`)
 	match := re.FindStringSubmatch(htmlContent)
 	if len(match) > 1 {
 		return match[1]
@@ -19,7 +21,7 @@ func getFirstImage(htmlContent string) string {
 	return ""
 }
 
-func Metro(query string) {
+func Metro(query string) types.Article {
 	type ParsedMetroResponse []struct {
 		Date    string `json:"date"`
 		Link    string `json:"link"`
@@ -74,6 +76,19 @@ func Metro(query string) {
 		parsed[i].Content.Rendered = ""
 	}
 
-	log.Printf("%+v", parsed)
+	var final types.Article
+
+	if len(parsed) == 0 {
+		log.Fatalf("An error ocurred %v", err)
+		return final
+	}
+
+	final.Title = parsed[0].Title.Rendered
+	final.Img = parsed[0].Img
+	final.URL = parsed[0].Link
+	final.Date = parsed[0].Date
+	final.Source = parsed[0].Source
+
+	return final
 
 }

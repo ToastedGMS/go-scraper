@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/ToastedGMS/go-scraper/types"
 )
 
-func Cnn(query string) {
+func Cnn(query string) types.Article {
 	type ParsedCnnResponse []struct {
 		Date             string `json:"date"`
 		Link             string `json:"link"`
@@ -54,6 +56,19 @@ func Cnn(query string) {
 		parsed[i].Source = "Cnn Brasil"
 	}
 
-	log.Println(parsed)
+	var final types.Article
+
+	if len(parsed) == 0 {
+		log.Fatalf("An error ocurred %v", err)
+		return final
+	}
+
+	final.Title = parsed[0].Title.Rendered
+	final.Date = parsed[0].Date
+	final.Img = parsed[0].FeaturedMediaURL
+	final.Source = parsed[0].Source
+	final.URL = parsed[0].Link
+
+	return final
 
 }
