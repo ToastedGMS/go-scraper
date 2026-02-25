@@ -1,16 +1,40 @@
-package main
+package sources
 
 import (
+	"encoding/json"
+	"html"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 )
 
-func metro(query string) {
+func getFirstImage(htmlContent string) string {
+	re := regexp.MustCompile(`src="([^"]+)"`)
+	match := re.FindStringSubmatch(htmlContent)
+	if len(match) > 1 {
+		return match[1]
+	}
+	return ""
+}
+
+func Metro(query string) {
+	type ParsedMetroResponse []struct {
+		Date    string `json:"date"`
+		Link    string `json:"link"`
+		Img     string
+		Content struct {
+			Rendered string `json:"rendered"`
+		} `json:"content"`
+		Title struct {
+			Rendered string `json:"rendered"`
+		} `json:"title"`
+		Source string
+	}
+
 	params := url.Values{}
 	params.Add("search", query)
-	params.Add("_embed", "")
 	params.Add("per_page", "1")
 
 	baseUrl := "https://www.metropoles.com/wp-json/wp/v2/posts"
@@ -32,12 +56,24 @@ func metro(query string) {
 
 	defer resp.Body.Close()
 
+	var parsed ParsedMetroResponse
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalf("An error ocurred %v", err)
 	}
 
-	sb := string(body)
-	log.Println(sb)
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Fatalf("An error ocurred %v", err)
+
+	}
+	for i := range parsed {
+		parsed[i].Source = "Metropoles"
+		parsed[i].Img = getFirstImage(parsed[i].Content.Rendered)
+		parsed[i].Title.Rendered = html.UnescapeString(parsed[i].Title.Rendered)
+		parsed[i].Content.Rendered = ""
+	}
+
+	log.Printf("%+v", parsed)
 
 }
