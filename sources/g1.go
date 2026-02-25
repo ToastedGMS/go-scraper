@@ -1,4 +1,4 @@
-package main
+package sources
 
 import (
 	"bytes"
@@ -8,7 +8,23 @@ import (
 	"net/http"
 )
 
-func g1(query string) {
+func G1(query string) {
+	type ParsedG1Response []struct {
+		Result struct {
+			Hits struct {
+				Hits []struct {
+					Source struct {
+						Title     string `json:"title"`
+						Publisher string `json:"publisher"`
+						Issued    string `json:"issued"`
+						URL       string `json:"url"`
+						Thumbnail string `json:"thumbnail"`
+					} `json:"_source"`
+				} `json:"hits"`
+			} `json:"hits"`
+		} `json:"result"`
+	}
+
 	payload := []map[string]interface{}{
 		{
 			"search_profile": "sp_g1_globo_com",
@@ -44,11 +60,17 @@ func g1(query string) {
 
 	defer response.Body.Close()
 
+	var parsed ParsedG1Response
+
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		log.Fatalf("Error reading response body from G1: %v", err)
 	}
-	sb := string(body)
-	log.Println(sb)
+
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Fatalf("Error parsing response body from G1: %v", err)
+	}
+
+	log.Printf("%+v", parsed[0].Result.Hits.Hits[0].Source)
 
 }
