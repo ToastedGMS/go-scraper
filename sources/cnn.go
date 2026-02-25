@@ -1,16 +1,25 @@
-package main
+package sources
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 )
 
-func cnn(query string) {
+func Cnn(query string) {
+	type ParsedCnnResponse []struct {
+		Date             string `json:"date"`
+		Link             string `json:"link"`
+		FeaturedMediaURL string `json:"jetpack_featured_media_url"`
+		Title            struct {
+			Rendered string `json:"rendered"`
+		} `json:"title"`
+		Source string
+	}
 	params := url.Values{}
 	params.Add("search", query)
-	params.Add("_embed", "")
 	params.Add("per_page", "1")
 
 	baseUrl := "https://admin.cnnbrasil.com.br/wp-json/wp/v2/posts"
@@ -36,7 +45,15 @@ func cnn(query string) {
 		log.Fatalf("An error ocurred %v", err)
 	}
 
-	sb := string(body)
-	log.Println(sb)
+	var parsed ParsedCnnResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Fatalf("An error ocurred %v", err)
+
+	}
+	for i := range parsed {
+		parsed[i].Source = "Cnn Brasil"
+	}
+
+	log.Println(parsed)
 
 }
