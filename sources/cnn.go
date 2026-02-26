@@ -2,15 +2,16 @@ package sources
 
 import (
 	"encoding/json"
+	"fmt"
+	"html"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/ToastedGMS/go-scraper/types"
 )
 
-func Cnn(query string) types.Article {
+func Cnn(query string) (types.Article, error) {
 	type ParsedCnnResponse []struct {
 		Date             string `json:"date"`
 		Link             string `json:"link"`
@@ -29,7 +30,7 @@ func Cnn(query string) types.Article {
 
 	req, err := http.NewRequest(http.MethodGet, fullUrl, nil)
 	if err != nil {
-		log.Fatalf("An error ocurred %v", err)
+		return types.Article{}, fmt.Errorf("Error creating request to Cnn: %w", err)
 	}
 
 	req.Header.Add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
@@ -37,30 +38,35 @@ func Cnn(query string) types.Article {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Fatalf("An error ocurred %v", err)
+		return types.Article{}, fmt.Errorf("Error sending request to Cnn: %w", err)
 	}
 
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return types.Article{}, fmt.Errorf("Unexpected response status from Cnn: %d", resp.StatusCode)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("An error ocurred %v", err)
+		return types.Article{}, fmt.Errorf("Error reading response from Cnn: %w", err)
 	}
 
 	var parsed ParsedCnnResponse
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		log.Fatalf("An error ocurred %v", err)
+		return types.Article{}, fmt.Errorf("Error parsing response from Cnn: %w", err)
 
 	}
 	for i := range parsed {
 		parsed[i].Source = "Cnn Brasil"
+		parsed[i].Title.Rendered = html.UnescapeString(parsed[i].Title.Rendered)
+
 	}
 
 	var final types.Article
 
 	if len(parsed) == 0 {
-		log.Fatalf("An error ocurred %v", err)
-		return final
+		return types.Article{}, fmt.Errorf("No results found for query: %s", query)
+
 	}
 
 	final.Title = parsed[0].Title.Rendered
@@ -69,6 +75,6 @@ func Cnn(query string) types.Article {
 	final.Source = parsed[0].Source
 	final.URL = parsed[0].Link
 
-	return final
+	return final, nil
 
 }
