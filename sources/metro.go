@@ -21,7 +21,7 @@ func getFirstImage(htmlContent string) string {
 	return ""
 }
 
-func Metro(query string) (types.Article, error) {
+func Metro(query string) ([]types.Article, error) {
 	type ParsedMetroResponse []struct {
 		Date    string `json:"date"`
 		Link    string `json:"link"`
@@ -37,14 +37,14 @@ func Metro(query string) (types.Article, error) {
 
 	params := url.Values{}
 	params.Add("search", query)
-	params.Add("per_page", "1")
+	params.Add("per_page", "5")
 
 	baseUrl := "https://www.metropoles.com/wp-json/wp/v2/posts"
 	fullUrl := baseUrl + "?" + params.Encode()
 
 	req, err := http.NewRequest("GET", fullUrl, nil)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Error creating request to Metropoles: %w", err)
+		return []types.Article{}, fmt.Errorf("Error creating request to Metropoles: %w", err)
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "application/json")
@@ -53,44 +53,41 @@ func Metro(query string) (types.Article, error) {
 
 	resp, err := Client.Do(req)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Metropoles request failed or timed out: %w", err)
+		return []types.Article{}, fmt.Errorf("Metropoles request failed or timed out: %w", err)
 	}
 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return types.Article{}, fmt.Errorf("Unexpected response status from Metropoles: %d", resp.StatusCode)
+		return []types.Article{}, fmt.Errorf("Unexpected response status from Metropoles: %d", resp.StatusCode)
 	}
 
 	var parsed ParsedMetroResponse
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Error reading response from Metropoles: %w", err)
+		return []types.Article{}, fmt.Errorf("Error reading response from Metropoles: %w", err)
 	}
 
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return types.Article{}, fmt.Errorf("Error parsing response from Metropoles: %w", err)
+		return []types.Article{}, fmt.Errorf("Error parsing response from Metropoles: %w", err)
 
 	}
-	for i := range parsed {
-		parsed[i].Source = "Metropoles"
-		parsed[i].Img = getFirstImage(parsed[i].Content.Rendered)
-		parsed[i].Title.Rendered = html.UnescapeString(parsed[i].Title.Rendered)
-	}
 
-	var final types.Article
+	var final []types.Article
 
 	if len(parsed) == 0 {
-		return types.Article{}, fmt.Errorf("No results found for query: %s", query)
+		return []types.Article{}, fmt.Errorf("No results found for query: %s", query)
 
 	}
-
-	final.Title = parsed[0].Title.Rendered
-	final.Img = parsed[0].Img
-	final.URL = parsed[0].Link
-	final.Date = parsed[0].Date
-	final.Source = parsed[0].Source
+	for _, item := range parsed {
+		final = append(final, types.Article{
+			Title:  html.UnescapeString(item.Title.Rendered),
+			URL:    item.Link,
+			Img:    getFirstImage(item.Content.Rendered),
+			Date:   item.Date,
+			Source: "Metropoles",
+		})
+	}
 
 	return final, nil
-
 }

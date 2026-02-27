@@ -10,7 +10,7 @@ import (
 	"github.com/ToastedGMS/go-scraper/types"
 )
 
-func G1(query string) (types.Article, error) {
+func G1(query string) ([]types.Article, error) {
 	type ParsedG1Response []struct {
 		Result struct {
 			Hits struct {
@@ -34,62 +34,66 @@ func G1(query string) (types.Article, error) {
 			"params": map[string]interface{}{
 				"q":    query,
 				"from": 0,
-				"size": 1,
+				"size": 5,
 			},
 		}}
 
 	postBody, err := json.Marshal(payload)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("G1: payload marshalling error: %w", err)
+		return []types.Article{}, fmt.Errorf("G1: payload marshalling error: %w", err)
 	}
 
 	responseBody := bytes.NewBuffer(postBody)
 
 	req, err := http.NewRequest(http.MethodPost, "https://busca.globo.com/v1/search", responseBody)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Error creating request to G1: %w", err)
+		return []types.Article{}, fmt.Errorf("Error creating request to G1: %w", err)
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("x-tenant-id", "g1")
-	req.Header.Add("Origin", "https://g1.globo.com")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-tenant-id", "g1")
+	req.Header.Set("Origin", "https://g1.globo.com")
 	req.Header.Set("Referer", "https://g1.globo.com/")
-	req.Header.Add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
 
 	response, err := Client.Do(req)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("G1 request failed or timed out: %w", err)
+		return []types.Article{}, fmt.Errorf("G1 request failed or timed out: %w", err)
 	}
 
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return types.Article{}, fmt.Errorf("Unexpected response status from G1: %d", response.StatusCode)
+		return []types.Article{}, fmt.Errorf("Unexpected response status from G1: %d", response.StatusCode)
 	}
 
 	var parsed ParsedG1Response
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Error reading response from G1: %w", err)
+		return []types.Article{}, fmt.Errorf("Error reading response from G1: %w", err)
 	}
 
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return types.Article{}, fmt.Errorf("Error parsing response from G1: %w", err)
+		return []types.Article{}, fmt.Errorf("Error parsing response from G1: %w", err)
 	}
 
-	var final types.Article
+	var final []types.Article
 
 	if len(parsed) == 0 || len(parsed[0].Result.Hits.Hits) == 0 {
-		return types.Article{}, fmt.Errorf("No results found for query: %s", query)
+		return []types.Article{}, fmt.Errorf("No results found for query: %s", query)
+	}
+	for _, item := range parsed[0].Result.Hits.Hits {
+		hit := item.Source
+
+		if hit.Title != "" && hit.URL != "" {
+			final = append(final, types.Article{
+				Title:  hit.Title,
+				URL:    hit.URL,
+				Img:    hit.Thumbnail,
+				Date:   hit.Issued,
+				Source: hit.Publisher,
+			})
+		}
 	}
 
-	hit := parsed[0].Result.Hits.Hits[0].Source
-
-	final.Title = hit.Title
-	final.Date = hit.Issued
-	final.Img = hit.Thumbnail
-	final.Source = hit.Publisher
-	final.URL = hit.URL
-
 	return final, nil
-
 }
