@@ -51,9 +51,9 @@ func Metro(query string) (types.Article, error) {
 	req.Header.Set("Referer", "https://www.metropoles.com/")
 	req.Header.Set("Accept-Language", "pt-BR,pt;q=0.9")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := Client.Do(req)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Error sending request to Metropoles: %w", err)
+		return types.Article{}, fmt.Errorf("Metropoles request failed or timed out: %w", err)
 	}
 
 	defer resp.Body.Close()

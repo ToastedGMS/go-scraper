@@ -52,11 +52,12 @@ func G1(query string) (types.Article, error) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("x-tenant-id", "g1")
 	req.Header.Add("Origin", "https://g1.globo.com")
+	req.Header.Set("Referer", "https://g1.globo.com/")
 	req.Header.Add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
 
-	response, err := http.DefaultClient.Do(req)
+	response, err := Client.Do(req)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Error sending request to G1: %w", err)
+		return types.Article{}, fmt.Errorf("G1 request failed or timed out: %w", err)
 	}
 
 	defer response.Body.Close()

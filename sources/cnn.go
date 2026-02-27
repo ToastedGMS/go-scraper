@@ -35,10 +35,11 @@ func Cnn(query string) (types.Article, error) {
 
 	req.Header.Add("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
 	req.Header.Add("Accept", "application/json")
+	req.Header.Set("Referer", "https://www.cnnbrasil.com.br/")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := Client.Do(req)
 	if err != nil {
-		return types.Article{}, fmt.Errorf("Error sending request to Cnn: %w", err)
+		return types.Article{}, fmt.Errorf("Cnn request failed or timed out: %w", err)
 	}
 
 	defer resp.Body.Close()
