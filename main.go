@@ -14,13 +14,13 @@ func RunScrapers(query string) ([]types.Article, []error) {
 	var stack sync.WaitGroup
 
 	type Results struct {
-		article types.Article
+		article []types.Article
 		errors  error
 	}
 
 	responseChannel := make(chan Results, 3)
 
-	functions := []func(string) (types.Article, error){
+	functions := []func(string) ([]types.Article, error){
 		sources.Cnn,
 		sources.G1,
 		sources.Metro,
@@ -28,7 +28,7 @@ func RunScrapers(query string) ([]types.Article, []error) {
 	stack.Add(len(functions))
 
 	for _, function := range functions {
-		go func(f func(string) (types.Article, error)) {
+		go func(f func(string) ([]types.Article, error)) {
 			defer stack.Done()
 			article, errors := f(query)
 			responseChannel <- Results{article, errors}
@@ -48,7 +48,7 @@ func RunScrapers(query string) ([]types.Article, []error) {
 			issues = append(issues, result.errors)
 			continue
 		}
-		results = append(results, result.article)
+		results = append(results, result.article...)
 	}
 
 	if len(issues) > 0 {
