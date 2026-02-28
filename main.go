@@ -12,6 +12,7 @@ import (
 
 	"github.com/ToastedGMS/go-scraper/sources"
 	"github.com/ToastedGMS/go-scraper/types"
+	"github.com/rs/cors"
 )
 
 func RunScrapers(query string) ([]types.Article, []error) {
@@ -178,12 +179,18 @@ func GroupArticles(articles []types.Article) []types.Story {
 
 func main() {
 	mux := http.NewServeMux()
-
 	mux.HandleFunc("/search", ScraperHandler)
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5173"},
+		AllowedMethods:   []string{"GET"},
+		AllowCredentials: true,
+	})
+
+	handler := c.Handler(mux)
 
 	port := "8080"
 	log.Printf("Server running on port: %v", port)
-	err := http.ListenAndServe(":"+port, mux)
+	err := http.ListenAndServe(":"+port, handler)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
