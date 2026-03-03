@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -181,7 +182,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/search", ScraperHandler)
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},
+		AllowedOrigins:   strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
 		AllowedMethods:   []string{"GET"},
 		AllowCredentials: true,
 	})
